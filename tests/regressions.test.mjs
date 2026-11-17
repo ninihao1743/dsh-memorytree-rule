@@ -694,6 +694,36 @@ test("CLI migrate --db 把旧库当迁移源，不把当前记忆库指到旧库
   }
 });
 
+test("CLI init 创建 AGENTS.md；已存在拒绝；--force 先备份", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mt-init-"));
+  const agents = path.join(dir, "AGENTS.md");
+  const dataDir = path.join(dir, "data");
+  const bin = fileURLToPath(new URL("../bin/mt.mjs", import.meta.url));
+  try {
+    const first = spawnSync(process.execPath, [bin, "init", "--agents", agents, "--data-dir", dataDir, "--json"], { encoding: "utf8" });
+    assert.equal(first.status, 0, first.stderr || first.stdout);
+    const created = JSON.parse(first.stdout);
+    assert.equal(created.ok, true);
+    assert.equal(created.sync.ok, true);
+    assert.ok(fs.existsSync(agents));
+    assert.match(fs.readFileSync(agents, "utf8"), /§1-1/);
+
+    const again = spawnSync(process.execPath, [bin, "init", "--agents", agents, "--data-dir", dataDir, "--json"], { encoding: "utf8" });
+    assert.equal(again.status, 1);
+    assert.match(JSON.parse(again.stdout).error, /已存在/);
+
+    fs.writeFileSync(agents, "旧正本内容\n");
+    const forced = spawnSync(process.execPath, [bin, "init", "--agents", agents, "--data-dir", dataDir, "--force", "--json"], { encoding: "utf8" });
+    assert.equal(forced.status, 0, forced.stderr || forced.stdout);
+    const replaced = JSON.parse(forced.stdout);
+    assert.ok(replaced.backup);
+    assert.match(fs.readFileSync(replaced.backup, "utf8"), /旧正本内容/);
+    assert.match(fs.readFileSync(agents, "utf8"), /§1-1/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("CLI 非法 --scope/--status 明确报错，不静默当 all", () => {
   const bin = fileURLToPath(new URL("../bin/mt.mjs", import.meta.url));
   const scope = spawnSync(process.execPath, [bin, "list", "--scope", "bogus"], { encoding: "utf8" });

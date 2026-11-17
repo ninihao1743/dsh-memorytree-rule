@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { MemoryRuntime } from "../lib/runtime.mjs";
 import { searchMemory } from "../lib/search.mjs";
 import { importLegacy } from "../lib/import-legacy.mjs";
@@ -25,6 +26,7 @@ const HELP = `dsh-memorytree-rule CLI（离线，不联网、不调 LLM）
 
 常用：
   doctor                         自检：路径、库、主干文件、旧库
+  init [--force]                 把起步模板写成 <DSH_HOME>/AGENTS.md 并同步（已存在不覆盖）
   stats                          四枝/状态统计
   sync [--force]                 把 AGENTS.md 的 §1 主干同步成枝条目
   migrate [--apply] [--db 路径]   迁移旧 memories.db（默认只预览）
@@ -152,6 +154,60 @@ async function main() {
       print(lines.join("\n"));
     }
     return res.ok ? 0 : 1;
+  }
+
+  // init 只写 AGENTS.md 正本，不先打开真实库；默认不覆盖已有文件。
+  if (cmd === "init") {
+    const rt = makeRuntime(args);
+    const target = rt.paths.agentsPath;
+    const template = fileURLToPath(new URL("../examples/AGENTS.template.md", import.meta.url));
+    if (!fs.existsSync(template)) {
+      const err = { ok: false, error: "找不到起步模板：" + template };
+      if (asJson) print(err, true);
+      else print("初始化失败：" + err.error);
+      return 1;
+    }
+    if (fs.existsSync(target) && args.force !== true) {
+      const err = {
+        ok: false,
+        error: "AGENTS.md 已存在，未覆盖：" + target + "（确需覆盖请加 --force；会先备份）",
+      };
+      if (asJson) print(err, true);
+      else print(err.error);
+      return 1;
+    }
+    let backup = null;
+    try {
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      if (fs.existsSync(target) && args.force === true) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        backup = target + ".bak-" + stamp;
+        fs.copyFileSync(target, backup);
+      }
+      fs.copyFileSync(template, target);
+    } catch (err) {
+      const out = { ok: false, error: "写 AGENTS.md 失败：" + (err?.message ?? String(err)), path: target };
+      if (asJson) print(out, true);
+      else print(out.error);
+      return 1;
+    }
+    const sync = rt.ensureTrunk(null, { force: true });
+    const out = {
+      ok: sync.ok === true,
+      path: target,
+      backup,
+      sync,
+      message: sync.ok === true
+        ? "已创建 AGENTS.md 并同步 " + (sync.rules ?? 0) + " 条主干规则。"
+        : "已创建 AGENTS.md，但同步失败：" + (sync.reason || sync.error || "未知原因"),
+    };
+    if (asJson) print(out, true);
+    else {
+      print(out.message);
+      if (backup) print("原文件已备份：" + backup);
+      print("下一步：按注释把 <...> 换成真实值，再运行 node bin/mt.mjs sync --force");
+    }
+    return out.ok ? 0 : 1;
   }
 
   // migrate 的 --db 指的是“旧库路径”，不能把它当成当前记忆库打开。

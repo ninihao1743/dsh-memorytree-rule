@@ -10,16 +10,16 @@
 |---|---|---|
 | 主干 | 每轮都要遵守的长期判据；正本是 `AGENTS.md` | 跨工作区 |
 | 情感枝 | 相处经历、情绪对话、工作感受；日记只是索引 | 跨工作区 |
-| 任务枝 | 插件/脚本/服务/固定操作的做法卡；一个 subject 一张 | 当前工作区 |
-| 判断叶 | 还没归类、待验证的规则、解析和零散观察 | 当前工作区 |
+| 任务枝 | 插件/脚本/服务/固定操作的做法卡；一个 subject 一张 | 全库（可显式 `workspace` 隔离） |
+| 判断叶 | 还没归类、待验证的规则、解析和零散观察 | 全库（可显式 `workspace` 隔离） |
 
 主干写明「不知道就会做错」的判据；任务枝只写路径、命令、参数和坑；枝叶与主干冲突时改枝叶，主干之间冲突时问用户。
 
 ## 第一次使用
 
 1. 在 DSH 里安装插件；安装后左侧栏出现「记忆树」入口。
-2. 看 `<DSH_HOME>/AGENTS.md` 是否已经存在：没有，就把插件自带的 `examples/AGENTS.template.md` 复制过去，按注释替换 `<...>` 占位；已经存在，就只合并需要的段落，不要整体覆盖原正本。
-3. 在插件目录运行 `node bin/mt.mjs doctor` 看路径与库是否正常，再运行 `node bin/mt.mjs sync --force` 把 §1 主干同步成可检索的枝条目。
+2. 看 `<DSH_HOME>/AGENTS.md` 是否已经存在：没有，就在插件目录运行 `node bin/mt.mjs init` 自动复制模板并同步；也可以手动复制 `examples/AGENTS.template.md`，按注释替换 `<...>` 占位。已经存在时 `init` 默认拒绝覆盖，只合并需要的段落。
+3. 在插件目录运行 `node bin/mt.mjs doctor` 看路径与库是否正常；需要强制重同步时运行 `node bin/mt.mjs sync --force`。
 4. 想看四枝长什么样，运行 `node bin/mt.mjs demo`：它在临时目录里建一套带「示例」标签的演示库和看板，不碰真实记忆。
 
 模板里的「示例，可删除」都是案例，不是实际记忆；看懂后可以删，也可以改成你自己的经历。
@@ -27,7 +27,7 @@
 ## 8 个工具
 
 - `memory_search`：混合检索；命中带分数分解和逐字证据，主干条目另有来源行号；没命中就明确说没有。
-- `memory_write`：写一条记忆；`trunk` 一律落候选，不会冒充规则。
+- `memory_write`：写一条记忆；默认脱敏，可传 `redact:false` 保留原文；`trunk` 一律落候选，不会冒充规则。
 - `memory_forget`：默认归档可恢复；物理删除需显式 `hard` 与原因。
 - `memory_tree`：看四枝全貌、候选、过期、待分拣和库大小。
 - `memory_card`：按 `subject` 或 `id` 取任务卡及相关条目。
@@ -43,6 +43,7 @@
 
 ```text
 node bin/mt.mjs doctor
+node bin/mt.mjs init
 node bin/mt.mjs stats
 node bin/mt.mjs sync --force
 node bin/mt.mjs search "备份 路径" --limit 5

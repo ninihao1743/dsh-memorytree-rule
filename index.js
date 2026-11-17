@@ -4,7 +4,7 @@
 // 看板的「写入正本」在显式确认后会修改 AGENTS.md 并立刻同步，其余写操作只改库。
 import fs from "node:fs";
 import path from "node:path";
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { buildTools } from "./lib/tools.mjs";
 import { MemoryRuntime } from "./lib/runtime.mjs";
 import { buildReportHtml } from "./lib/report.mjs";
@@ -12,6 +12,7 @@ import { findAgentSectionRule } from "./lib/rules.mjs";
 import {
   BOARD_TOKEN_HEADER,
   buildThinkPrompt,
+  ensureBoardToken,
   runBoardAction,
 } from "./lib/board.mjs";
 
@@ -199,8 +200,8 @@ async function wakeSession(webCtx, sessionId, text, options = {}) {
  */
 export function apply(ctx, config = {}) {
   const runtime = new MemoryRuntime(config ?? {});
-  // 每个进程一个随机令牌：不再落盘长期复用，重启即失效，旧页面需重新打开。
-  runtime.board.token = randomBytes(24).toString("hex");
+  // 与本机版一致：令牌落在 dataDir/board-token，重启后看板链接仍可用。
+  runtime.board.token = ensureBoardToken(runtime.paths.dataDir);
   // 插件启动先导出一次任务卡快照；QQ / B站 等插件读 cards.json 拿自己的卡。
   try {
     runtime.exportCards();

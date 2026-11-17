@@ -247,6 +247,33 @@ test("作用域：workspace 条目不会串到别的工作区", () => {
   }
 });
 
+test("默认作用域：四枝默认 user，all 检索覆盖全库", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mt-scope-"));
+  const agents = path.join(dir, "AGENTS.md");
+  fs.writeFileSync(agents, "## §1 主干\n\n- **§1-1　核心规则**：测试规则。\n");
+  const rt = new MemoryRuntime({ dataDir: dir, agentsPath: agents });
+  try {
+    for (const layer of ["trunk", "emotion", "task", "leaf"]) {
+      assert.equal(rt.defaultScope(layer, { cwd: dir }), "user");
+    }
+    const store = rt.open();
+    store.add({ layer: "task", scope: "user", subject: "global", text: "全局任务卡" });
+    store.add({ layer: "leaf", scope: "workspace:other", text: "别的项目判断叶" });
+    const all = rt.scopesFor({ cwd: dir }, "all");
+    assert.ok(all.scopes.includes("user"));
+    assert.ok(all.scopes.includes("workspace:other"));
+    const hit = searchMemory(store, { query: "别的项目", scopes: all.scopes });
+    assert.equal(hit.hits.length, 1);
+    const current = rt.scopesFor({ cwd: dir }, "workspace");
+    assert.deepEqual(current.scopes, [rt.workspaceOf({ cwd: dir }).scope]);
+    const raw = store.add({ layer: "leaf", text: "邮箱 raw@example.com", skipRedact: true }).node;
+    assert.match(raw.text, /raw@example\.com/);
+  } finally {
+    rt.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("主干：手工写入只产生候选；AGENTS.md 同步的才是 active", () => {
   const { store, cleanup } = makeStore();
   try {
