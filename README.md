@@ -58,8 +58,10 @@
 - **检索与过滤**：页内搜索实时计数、压暗未命中的星；层色标可按枝过滤。
 - **深度思考**：把规则原文和改写要求投回 DSH 会话，由 DSH 处理；页面只显示「已发送」，不假装同步返回结果。
 - **打印 / PDF**：打印样式去掉交互与背景。
-
 看板不引用外链、不联网；在线看板是同源页面，`file://` 双击的离线快照只读。看板写操作只接受本机回环、同源请求和 `dataDir/board-token` 里的令牌；令牌与本机模式一致，重启后旧链接仍可用。看板是快照，实时数据仍以 `memory.db` 为准。
+<img width="2235" height="1339" alt="cf87d01b-c935-496a-94df-d1b264426db4" src="https://github.com/user-attachments/assets/ea0fabf7-be3f-4adc-8250-9bbdcdea3ebd" />
+<img width="1258" height="1192" alt="1265439f-eb32-44b6-a8c9-7a8794b703b4" src="https://github.com/user-attachments/assets/65f2a5bb-a4a7-478e-ad70-3b52d7c7a5e3" />
+<img width="518" height="1130" alt="2ad3d568-e6a0-4e67-9480-f92d0ad02404" src="https://github.com/user-attachments/assets/88c8e580-cbd0-4333-b247-74797382e424" />
 
 ## 作用域
 
