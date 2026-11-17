@@ -23,7 +23,7 @@
 
 ## 安装
 
-用 DSH 自带的插件管理器安装（具体命令随 DSH 版本不同，以「设置 → 插件」或 `dsh plugin --help` 为准）。安装后 8 个 `memory_*` 工具会注册，左侧栏出现「记忆树」入口。
+用 DSH 自带的插件管理器安装（具体命令随 DSH 版本不同，以「设置 → 插件」或 `dsh plugin --help` 为准）。安装后 9 个 `memory_*` 工具会注册，左侧栏出现「记忆树」入口。
 
 改了插件代码后要完全退出并重启 DSH，宿主才会丢掉内存里的旧模块、加载新代码；只改源码而未重装时，`node bin/mt.mjs` 仍走新代码，插件内的工具与看板可能还是旧模块。
 
@@ -35,7 +35,7 @@
 
 模板里的「示例，可删除」都是案例，不是实际记忆；看懂后可以删，也可以改成你自己的经历。模板不是插件自动写入的规则，插件不会替你生成 `AGENTS.md`。
 
-## 8 个工具
+## 9 个工具
 
 | 工具 | 用途 |
 |---|---|
@@ -47,6 +47,27 @@
 | `memory_ingest` | `sync` 把 `AGENTS.md` 的 §1 主干同步成索引；`migrate` 迁移旧库；`status` 看环境。 |
 | `memory_daily` | 每日分拣：出报告（待分拣叶、聚类、陈旧卡、过期项），或一次提交去枝/遗忘决定。 |
 | `memory_admin` | `doctor` / `stats` / `reindex` / `export` / `import` / `audit` / `report` / `diary` / `placement`。 |
+| `memory_emotion` | 可选的情感候选日结：`list` / `mark` / `stats` / `budget` / `report`；只动候选表，不直接写记忆。 |
+
+## 可选：情感候选采集（默认关闭）
+
+插件默认**不采集**会话正文。需要在插件配置里显式打开 `emotionCapture: true` 才会在本地按规则挑候选；打开的只是「候选」，不是记忆：候选留在 `emotion_candidate` 表里，30 天后自动清理，真正的记忆仍由 `memory_write` 写入。
+
+```json
+{
+  "emotionCapture": true,
+  "emotionPluginCwdPatterns": ["my-bot-workspace"],
+  "emotionReviewCostCapCny": 0.3,
+  "emotionRetentionDays": 30
+}
+```
+
+- **采集**：监听 `session/event`，只取 user/assistant 的 text 块；本地打分（情绪、记忆、关系、工作挫折、第一人称感受等），≥35 分才入候选；每个会话每天最多 6 条、全局 12 条；正文最多 800 字，另存 240 字上下文；`sha1(session_id + role + day + text)` 去重。
+- **分类**：`relationship`（主会话里的相处/情绪/回忆）、`plugin`（cwd 命中 `emotionPluginCwdPatterns` 的插件会话）、`work`（工作复盘与普通会话）。插件 cwd 由用户自己配置，插件不内置任何具体平台。
+- **脱敏**：候选正文先过本地脱敏（密钥、邮箱、长数字、`openid`/`qq` 值、访客昵称与 @ 提及）；不保存整段会话，只留节选与上下文。
+- **日结**：建议每天固定时间开一个新会话，让模型执行 `memory_emotion stats` → `budget` → `list`，再用 `memory_write` 写 0–6 条**第一人称感受/立场**，然后 `mark` + `report`。候选不足就少写；写不出感受的候选宁可 dismiss，不要写成事件汇报。插件**不会自动创建**这个定时任务，需要你自己在 DSH 里建。
+- **成本**：采集在本地完成，0 token、不调 LLM；日结的 token 花在模型读候选和写记忆上，`budget` 会读本机 DSH 成本账本（如果存在），可设 `emotionReviewCostCapCny` 上限。
+- **关闭**：`emotionCapture: false` 即停；已采集的候选可用 `memory_emotion mark status=dismissed` 清理，或等 30 天自动过期。
 
 ## 看板
 
@@ -82,7 +103,7 @@
 - 写入默认脱敏：常见密钥、`Bearer`、`password/secret/token/api_key = …`、邮箱、长数字串、`openid`/`qq` 值。
 - 全量导出：`memory_admin action=export`（JSONL）；审计：`memory_admin action=audit`。
 - 日记：`memory_admin action=diary`；只写「库内当天发生了什么」的索引，不写会话正文；手写日记不会被自动覆盖（`force=true` 才行）。
-- 插件不读取会话正文、不监听事件写库、不调任何外部 API。
+- 默认不读会话正文；只有显式开启 `emotionCapture: true` 才在本地按规则挑候选，候选先脱敏、只留节选、30 天过期，不写记忆、不联网、不调外部 API。关闭后不再采集。
 - 主干正本始终是 `AGENTS.md`；只有看板里显式确认的「写入正本」才会改它，改前备份、改后回读校验。
 
 ## 命令行
@@ -105,15 +126,16 @@ node bin/mt.mjs report --out report.html
 ## 测试
 
 ```text
-node --test tests/memory-tree.test.mjs tests/renumber.test.mjs tests/trunk-bucket.test.mjs tests/regressions.test.mjs
+node --test tests/memory-tree.test.mjs tests/renumber.test.mjs tests/trunk-bucket.test.mjs tests/regressions.test.mjs tests/emotion.test.mjs
 ```
 
-93 个用例、4 个测试文件，覆盖分词、脱敏、空结果诚实、作用域隔离、默认作用域与全库检索、`init` 备份/拒绝覆盖、主干候选规则、取代、归档/硬删、任务卡唯一、`AGENTS.md` 解析与幂等同步、旧库迁移、每日分拣、过期降权、JSONL 往返、日记自动索引与手写保护、工具渲染内容块契约、看板自包含与关键组件、看板写正本/备份/信任升档、客户端侧栏入口契约、规则归枝等。测试全部用临时目录隔离，不碰真实库。
+103 个用例、5 个测试文件，覆盖分词、脱敏、空结果诚实、作用域隔离、默认作用域与全库检索、`init` 备份/拒绝覆盖、主干候选规则、取代、归档/硬删、任务卡唯一、`AGENTS.md` 解析与幂等同步、旧库迁移、每日分拣、过期降权、JSONL 往返、日记自动索引与手写保护、工具渲染内容块契约、看板自包含与关键组件、看板写正本/备份/信任升档、客户端侧栏入口契约、规则归枝，以及情感候选的提取/打分/分类/脱敏/去重/上限/默认关闭/预算/迁移。测试全部用临时目录隔离，不碰真实库。
 
 ## 明确没做的
 
 - **不做自动注入**：不会每轮把记忆塞进系统提示，避免与「单一注入源」冲突；召回靠模型主动调 `memory_search`。
-- **不做会话正文自动采集**：入库走显式 `memory_write` 与每日分拣。
+- **默认不做会话正文自动采集**：不开 `emotionCapture` 时，入库只走显式 `memory_write` 与每日分拣；开了也只落候选表，不直接改记忆。
+- **不是自动写记忆**：候选要经过日结判断，写不出第一人称感受的候选会被丢弃；插件不替用户决定什么是「值得记的」。
 - **不做加密**：库是明文 SQLite，靠脱敏与文件权限；需要加密请用磁盘加密或容器卷。
 - **不是神经语义检索**：字符 n-gram 只做措辞相近加分；没命中会如实说没有。
 

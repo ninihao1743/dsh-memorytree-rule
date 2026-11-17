@@ -24,9 +24,9 @@
 
 模板里的「示例，可删除」都是案例，不是实际记忆；看懂后可以删，也可以改成你自己的经历。
 
-## 8 个工具
+## 9 个工具
 
-- `memory_search`：混合检索；命中带分数分解和逐字证据，主干条目另有来源行号；没命中就明确说没有。
+- `memory_search`：混合检索；命中带分数分解与逐字证据，主干条目另有来源行号；没命中就明确说没有。
 - `memory_write`：写一条记忆；默认脱敏，可传 `redact:false` 保留原文；`trunk` 一律落候选，不会冒充规则。
 - `memory_forget`：默认归档可恢复；物理删除需显式 `hard` 与原因。
 - `memory_tree`：看四枝全貌、候选、过期、待分拣和库大小。
@@ -34,6 +34,7 @@
 - `memory_ingest`：`sync` 同步 `AGENTS.md` §1；`migrate` 迁移旧库；`status` 看环境。
 - `memory_daily`：生成待分拣报告，或一次提交去枝/遗忘决定。
 - `memory_admin`：`doctor` / `stats` / `reindex` / `export` / `import` / `audit` / `report` / `diary` / `placement`。
+- `memory_emotion`：可选的情感候选日结（`list` / `mark` / `stats` / `budget` / `report`）；需显式开启 `emotionCapture`，只动候选表，不直接写记忆。
 
 ## 看板与命令行
 
@@ -56,12 +57,13 @@ node bin/mt.mjs report --out report.html
 
 - 库在 `<DSH_HOME>/memory-tree/memory.db`，WAL 单文件，可整体备份。
 - 写入默认脱敏：常见密钥、`Bearer`、`password/secret/token/api_key = …`、邮箱、长数字串、`openid`/`qq` 值。
-- 不读取会话正文、不监听事件写库、不调外部 API；需要加密请用磁盘加密或容器卷。
+- 默认不读会话正文；只有显式开启 `emotionCapture: true` 才在本地按规则挑候选，候选先脱敏、只留节选、30 天过期，不写记忆、不联网、不调外部 API。插件 cwd 用 `emotionPluginCwdPatterns` 配置，不内置具体平台。
+- 情感采集默认关闭；开启方法、候选字段、日结流程见 [EMOTION.md](./EMOTION.md)。
 - 主干正本始终是 `AGENTS.md`；只有看板里显式确认的「写入正本」才会改它，改前备份、改后回读校验。
 
 ## 边界
 
 - 不做自动注入：不会每轮把记忆塞进系统提示，召回靠主动调用 `memory_search`。
-- 不做会话正文自动采集：入库走显式 `memory_write` 与每日分拣。
+- 默认不做会话正文自动采集：不开 `emotionCapture` 时，入库走显式 `memory_write` 与每日分拣；开了也只落候选表，不直接写记忆。
 - 向量检索是字符 n-gram 特征哈希，只用于措辞相近加分，不是神经语义模型；没命中不会编造。
 - 看板是快照，实时数据仍以 `memory.db` 为准。

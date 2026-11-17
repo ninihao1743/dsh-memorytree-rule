@@ -1,5 +1,15 @@
 # 更新记录
 
+## 1.2.0（2026-11-18）
+
+- **可选情感候选采集**：新增 `emotionCapture`（默认 `false`）。开启后监听 `session/event`，本地按情绪/记忆/关系/工作挫折等规则打分，≥35 分才入候选；每会话每天 6 条、全局 12 条、插件类别 4 条；正文 800 字 + 上下文 240 字；30 天过期。不联网、不调 LLM。
+- **新工具 `memory_emotion`**：`list` / `mark` / `stats` / `budget` / `report`；只动候选表，不直接写记忆。日结仍用 `memory_write` 写第一人称感受/立场。
+- **schema v6**：新增 `emotion_candidate` / `emotion_review` 两张表与索引；v5 库自动迁移，新库直接建 v6。
+- **`memory_write` 可选 `source`**：默认为 `manual`，自动采集/日结写入可回溯来源；supersede 记 `source:merge`。
+- **隐私**：插件 cwd 改为 `emotionPluginCwdPatterns` 配置，不内置任何平台；不自动创建日结调度；候选先脱敏、只留节选、30 天清理。
+- **健康检查**：`/memory-tree/health` 返回 `tools` 与 `toolErrors`；工具注册逐个 try/catch，单个失败不再中断整组。
+- **测试**：103 个用例、5 个测试文件（新增 `tests/emotion.test.mjs`）。
+
 ## 1.1.0（2026-11-17）
 
 - **默认更顺手**：四枝默认都写 `user`；任务卡/判断叶换工作区也能直接查到，`workspace:<hash>` 改为显式隔离选项。

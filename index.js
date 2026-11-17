@@ -1,6 +1,6 @@
 // dsh-memorytree-rule — Memorytree 的独立插件入口。
 //
-// 只做一件事：把 8 个 memory_* 工具与看板写操作路由注册进宿主。所有状态落在 SQLite；
+// 只做一件事：把 9 个 memory_* 工具与看板写操作路由注册进宿主。所有状态落在 SQLite；
 // 看板的「写入正本」在显式确认后会修改 AGENTS.md 并立刻同步，其余写操作只改库。
 import fs from "node:fs";
 import path from "node:path";
@@ -196,13 +196,13 @@ async function wakeSession(webCtx, sessionId, text, options = {}) {
 
 /**
  * @param {import("@deepseek-ai/cordis").Context} ctx
- * @param {{dataDir?:string,dbFile?:string,agentsPath?:string,legacyDb?:string,redact?:boolean,autoSync?:boolean}} config
+ * @param {{dataDir?:string,dbFile?:string,agentsPath?:string,legacyDb?:string,redact?:boolean,autoSync?:boolean,emotionCapture?:boolean,emotionMinScore?:number,emotionRetentionDays?:number,emotionReviewCostCapCny?:number,emotionPluginCwdPatterns?:string[]}} config
  */
 export function apply(ctx, config = {}) {
   const runtime = new MemoryRuntime(config ?? {});
   // 与本机版一致：令牌落在 dataDir/board-token，重启后看板链接仍可用。
   runtime.board.token = ensureBoardToken(runtime.paths.dataDir);
-  // 插件启动先导出一次任务卡快照；QQ / B站 等插件读 cards.json 拿自己的卡。
+  // 插件启动先导出一次任务卡快照；外部插件读 cards.json 拿自己的卡。
   try {
     runtime.exportCards();
   } catch (err) {
@@ -211,8 +211,16 @@ export function apply(ctx, config = {}) {
 
   ctx.effect(() => {
     const disposers = [];
+    // 逐个注册；单个工具注册失败不拖垮整组，并把错误暴露到 health，便于排查宿主版本差异。
     for (const tool of buildTools(runtime)) {
-      disposers.push(ctx.tools.register(tool));
+      try {
+        disposers.push(ctx.tools.register(tool));
+        runtime.registeredTools.push(tool.name);
+      } catch (err) {
+        const message = err?.message ? String(err.message) : String(err);
+        runtime.toolErrors.push({ name: tool.name, error: message });
+        ctx.logger?.warn?.("[dsh-memorytree-rule] 工具注册失败 " + tool.name + ": " + message);
+      }
     }
     return () => {
       // 先撤工具再关库，避免卸载过程中还有调用打进来。
@@ -232,9 +240,13 @@ export function apply(ctx, config = {}) {
   ctx.effect(() => {
     if (typeof ctx.on !== "function") return () => {};
     try {
-      const off = ctx.on("session/event", (session) => {
+      const off = ctx.on("session/event", (session, event) => {
         const id = session?.header?.id ?? session?.id;
         if (id) runtime.noteSession(id);
+        const res = runtime.captureEvent(session, event);
+        if (res && res.ok === false && res.error) {
+          ctx.logger?.warn?.("[dsh-memorytree-rule] 情感采集失败: " + res.error);
+        }
       });
       return () => {
         try {
@@ -293,6 +305,8 @@ export function apply(ctx, config = {}) {
                     board: runtime.board.base ? runtime.board.base + "/memory-tree/board" : "/memory-tree/board",
                     hasSession: Boolean(runtime.board.sessionId),
                     indexVersion: stats.indexVersion,
+                    tools: runtime.registeredTools,
+                    toolErrors: runtime.toolErrors,
                   });
                   return;
                 }
@@ -393,7 +407,7 @@ export function apply(ctx, config = {}) {
 
   try {
     ctx.logger?.info?.(
-      "memory-tree: 已注册 8 个记忆工具与看板路由（数据目录 " + runtime.paths.dataDir +
+      "memory-tree: 已注册 " + (runtime.registeredTools?.length ?? 0) + " 个记忆工具与看板路由（数据目录 " + runtime.paths.dataDir +
         (runtime.board.base ? "，看板 " + runtime.board.base + "/memory-tree/board" : "，看板路由待 Web 服务就绪") + "）",
     );
   } catch {

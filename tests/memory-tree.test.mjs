@@ -532,17 +532,17 @@ test("归类：任务推荐落卡、情感归枝、主干五项检查写正本",
     assert.equal(groups[0].key, "§1-1");
     assert.equal(groups[0].title, "基本判据");
 
-    const leaf = store.add({ layer: "leaf", scope: "user", subject: "self", title: "群规则", text: "QQ 群管理档只能查询，不能执行操作。", importance: 0.85 }).node;
+    const leaf = store.add({ layer: "leaf", scope: "user", subject: "self", title: "群规则", text: "群管理档只能查询，不能执行操作。", importance: 0.85 }).node;
     const created = runBoardAction(store, { op: "placement-create", id: leaf.id, text: leaf.text }, options);
     assert.equal(created.ok, true);
     assert.equal(created.placement.status, "pending");
     assert.match(created.prompt, /action=placement, op=recommend/);
 
-    store.placementRecommend(created.placement.id, { subject: "qqbot", reason: "这是插件操作规则" });
-    const task = runBoardAction(store, { op: "branch-task", id: leaf.id, requestId: created.placement.id, subject: "qqbot" }, options);
+    store.placementRecommend(created.placement.id, { subject: "bot", reason: "这是插件操作规则" });
+    const task = runBoardAction(store, { op: "branch-task", id: leaf.id, requestId: created.placement.id, subject: "bot" }, options);
     assert.equal(task.ok, true);
     assert.equal(store.get(leaf.id).status, "superseded");
-    assert.match(store.cards(["user"]).find((c) => c.subject === "qqbot").text, /QQ 群管理档/);
+    assert.match(store.cards(["user"]).find((c) => c.subject === "bot").text, /群管理档/);
 
     const emo = store.add({ layer: "leaf", scope: "user", subject: "self", title: "偏好", text: "用户喜欢安静的环境。" }).node;
     const emoDone = runBoardAction(store, { op: "branch-emotion", id: emo.id, text: emo.text }, options);
