@@ -77,8 +77,5 @@
         "@deepseek-ai/dsh-client-ui-slots"
       ]
     }
-  },
-  "dependencies": {
-    "dsh-memorytree-rule": "file:dsh-memorytree-rule-1.1.0.tgz"
   }
 }
