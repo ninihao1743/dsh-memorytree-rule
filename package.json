@@ -1,0 +1,81 @@
+{
+  "name": "dsh-memorytree-rule",
+  "version": "1.0.0",
+  "description": "Memorytree：DSH 本地记忆树插件。四枝分层（主干/情感枝/任务枝/判断叶）、按作用域隔离、逐字证据与审计、离线 BM25 + 字符 n-gram 检索、星图看板与日记索引；不联网、不调 LLM、零外部服务。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "bin",
+    "docs",
+    "examples",
+    "tests",
+    "locale",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "memory",
+    "memory-tree",
+    "knowledge-base",
+    "sqlite",
+    "bm25",
+    "local-first",
+    "agents"
+  ],
+  "license": "MIT",
+  "author": "Memorytree contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ninihao1743/dsh-memorytree-rule.git"
+  },
+  "homepage": "https://github.com/ninihao1743/dsh-memorytree-rule#readme",
+  "bugs": {
+    "url": "https://github.com/ninihao1743/dsh-memorytree-rule/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "test": "node --test tests/memory-tree.test.mjs tests/renumber.test.mjs tests/trunk-bucket.test.mjs tests/regressions.test.mjs",
+    "migrate": "node bin/mt.mjs migrate --apply",
+    "doctor": "node bin/mt.mjs doctor",
+    "report": "node bin/mt.mjs report",
+    "diary": "node bin/mt.mjs diary auto"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.2.0-rc.2 <0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  }
+}

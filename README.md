@@ -1,0 +1,119 @@
+# Memorytree（dsh-memorytree-rule）
+
+把「主干、情感枝、任务枝、判断叶」放进 DSH 的本地记忆插件。规则以 `AGENTS.md` 为正本，经历、任务卡和待分拣观察落在本地 SQLite；检索在进程内完成，不联网、不调 LLM、不起外部服务。
+
+## 它解决什么
+
+- **四枝分层**：§1 主干 / §2 情感枝 / §3 任务枝 / §4 判断叶，各管一类东西，不混在一起。
+- **主干仍以 `AGENTS.md` 为正本**：插件只做可检索的索引副本，主干条目带来源行号和逐字证据；手动写 `trunk` 只会落 `candidate`，不会冒充规则。
+- **遗忘不是删除**：默认归档（`archived`），显式 `hard` 才物理删除；取代（`superseded`）保留旧条目和指向关系。
+- **单一记忆体系**：不新建与记忆树并行的存储；任务清单仍只记进度。
+- **按作用域隔离**：规则和情感跨工作区共享；任务卡和判断叶默认按当前工作区分开，换项目不串味。
+
+## 四枝
+
+| 枝 | 放什么 | 默认作用域 |
+|---|---|---|
+| 主干 | 每轮都要遵守的长期判据；正本是 `AGENTS.md` | 跨工作区 |
+| 情感枝 | 相处经历、情绪对话、工作感受；日记只是索引 | 跨工作区 |
+| 任务枝 | 插件/脚本/服务/固定操作的做法卡；一个 subject 一张 | 当前工作区 |
+| 判断叶 | 还没归类、待验证的规则、解析和零散观察 | 当前工作区 |
+
+主干写明「不知道就会做错」的判据；任务枝只写路径、命令、参数和坑；枝叶与主干冲突时改枝叶，主干之间冲突时问用户。
+
+## 安装
+
+用 DSH 自带的插件管理器安装（具体命令随 DSH 版本不同，以「设置 → 插件」或 `dsh plugin --help` 为准）。安装后 8 个 `memory_*` 工具会注册，左侧栏出现「记忆树」入口。
+
+改了插件代码后要完全退出并重启 DSH，宿主才会丢掉内存里的旧模块、加载新代码；只改源码而未重装时，`node bin/mt.mjs` 仍走新代码，插件内的工具与看板可能还是旧模块。
+
+## 第一次使用
+
+1. 先看 `<DSH_HOME>/AGENTS.md` 是否已经存在：没有，就把插件自带的 `examples/AGENTS.template.md` 复制过去，按注释把 `<...>` 换成你的真实值，不需要的条目整条删掉；已经存在，就只把模板里需要的段落合并进去，不要整体覆盖你原来的正本。
+2. 在插件目录运行 `node bin/mt.mjs doctor` 看路径与库是否正常，再运行 `node bin/mt.mjs sync --force`，把 §1 主干同步成可检索的枝条目。
+3. 想看四枝长什么样，运行 `node bin/mt.mjs demo`：它在临时目录里建一套带「示例」标签的演示库和看板，不碰真实记忆。
+
+模板里的「示例，可删除」都是案例，不是实际记忆；看懂后可以删，也可以改成你自己的经历。模板不是插件自动写入的规则，插件不会替你生成 `AGENTS.md`。
+
+## 8 个工具
+
+| 工具 | 用途 |
+|---|---|
+| `memory_search` | 混合检索；命中带分数分解和逐字证据，主干条目另有来源行号；没命中就明确说没有、不编造。 |
+| `memory_write` | 写一条记忆（四枝之一）；默认自动脱敏，`trunk` 一律落候选。 |
+| `memory_forget` | 遗忘；默认归档可恢复，`hard` 需给出原因。 |
+| `memory_tree` | 看四枝全貌、候选、过期、待分拣和库大小。 |
+| `memory_card` | 按 `subject` 或 `id` 取一张任务卡及相关条目。 |
+| `memory_ingest` | `sync` 把 `AGENTS.md` 的 §1 主干同步成索引；`migrate` 迁移旧库；`status` 看环境。 |
+| `memory_daily` | 每日分拣：出报告（待分拣叶、聚类、陈旧卡、过期项），或一次提交去枝/遗忘决定。 |
+| `memory_admin` | `doctor` / `stats` / `reindex` / `export` / `import` / `audit` / `report` / `diary` / `placement`。 |
+
+## 看板
+
+`memory_admin action=report` 或 `node bin/mt.mjs report --out report.html` 生成一张自包含 HTML：
+
+- **星图**：四枝各成一簇，每条记忆一颗星，大小一致、颜色按枝区分；悬停读标题，点击开详情抽屉。
+- **规则操作**：主干可手动修改或归枝；修改会先进判断叶的「待确定写入」，显式确认后才备份、写 `AGENTS.md`、回读校验并同步索引。
+- **判断叶归枝**：主干要过五项核心规则检查；情感枝/任务枝只写本机记忆库；任务枝由 DSH 先判断最合适的卡，用户确认后才落卡。
+- **检索与过滤**：页内搜索实时计数、压暗未命中的星；层色标可按枝过滤。
+- **深度思考**：把规则原文和改写要求投回 DSH 会话，由 DSH 处理；页面只显示「已发送」，不假装同步返回结果。
+- **打印 / PDF**：打印样式去掉交互与背景。
+
+看板不引用外链、不联网；在线看板是同源页面，`file://` 双击的离线快照只读。看板写操作只接受本机回环、同源请求和进程内随机令牌；令牌不落盘，DSH 重启即失效。看板是快照，实时数据仍以 `memory.db` 为准。
+
+## 作用域
+
+- `user`：跨工作区共享的规则与情感（主干、情感枝默认写这里）。
+- `workspace:<cwd 的 sha1 前 10 位>`：任务卡与判断叶默认按当前会话工作区分开。
+
+`memory_search` 默认 `scope=all`（`user` + 当前 workspace），也可以只要 `user` 或 `workspace`。
+
+## 检索怎么做的（不夸大）
+
+- **BM25**：中文按「单字 + 相邻二字」切，ASCII 按词切；单字只在没有词/bigram 时才参与，避免长句里凑出假命中。
+- **向量**：256 维 hashed 字符 n-gram（feature hashing），只用于「措辞相近」的加分，不是神经语义模型，不理解同义改写；默认 `hybrid` 要求至少一个查询词真的出现，纯相似度召回只在显式 `mode=vector` 时使用。
+- **修正**：层权重（主干最高）、状态（active > candidate > superseded > archived）、importance、trust、半衰期衰减、过期降权；每条命中都能在 `match` 里看到为什么被召回。
+
+## 数据与隐私
+
+- 库：`<DSH_HOME>/memory-tree/memory.db`（WAL，单文件，可整体备份）。
+- 写入默认脱敏：常见密钥、`Bearer`、`password/secret/token/api_key = …`、邮箱、长数字串、`openid`/`qq` 值。
+- 全量导出：`memory_admin action=export`（JSONL）；审计：`memory_admin action=audit`。
+- 日记：`memory_admin action=diary`；只写「库内当天发生了什么」的索引，不写会话正文；手写日记不会被自动覆盖（`force=true` 才行）。
+- 插件不读取会话正文、不监听事件写库、不调任何外部 API。
+- 主干正本始终是 `AGENTS.md`；只有看板里显式确认的「写入正本」才会改它，改前备份、改后回读校验。
+
+## 命令行
+
+以下命令都在插件目录下执行（即 `node_modules/dsh-memorytree-rule`）；装了插件后工具优先用 `memory_admin`，不必手敲路径。
+
+```text
+node bin/mt.mjs doctor
+node bin/mt.mjs stats
+node bin/mt.mjs sync --force
+node bin/mt.mjs search "备份 路径" --limit 5
+node bin/mt.mjs daily
+node bin/mt.mjs demo
+node bin/mt.mjs report --out report.html
+```
+
+`demo` 用临时目录建隔离示例库，不读写真实库；`--out` 可把演示看板写到指定文件。
+
+## 测试
+
+```text
+node --test tests/memory-tree.test.mjs tests/renumber.test.mjs tests/trunk-bucket.test.mjs tests/regressions.test.mjs
+```
+
+91 个用例、4 个测试文件，覆盖分词、脱敏、空结果诚实、作用域隔离、主干候选规则、取代、归档/硬删、任务卡唯一、`AGENTS.md` 解析与幂等同步、旧库迁移、每日分拣、过期降权、JSONL 往返、日记自动索引与手写保护、工具渲染内容块契约、看板自包含与关键组件、看板写正本/备份/信任升档、客户端侧栏入口契约、规则归枝等。测试全部用临时目录隔离，不碰真实库。
+
+## 明确没做的
+
+- **不做自动注入**：不会每轮把记忆塞进系统提示，避免与「单一注入源」冲突；召回靠模型主动调 `memory_search`。
+- **不做会话正文自动采集**：入库走显式 `memory_write` 与每日分拣。
+- **不做加密**：库是明文 SQLite，靠脱敏与文件权限；需要加密请用磁盘加密或容器卷。
+- **不是神经语义检索**：字符 n-gram 只做措辞相近加分；没命中会如实说没有。
+
+## 许可
+
+MIT。
