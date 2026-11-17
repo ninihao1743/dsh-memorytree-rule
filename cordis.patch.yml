@@ -12,3 +12,5 @@
         redact: true
         # 每次检索/查看树之前，若 AGENTS.md 变了就重新同步 §1 主干（15 秒节流）。
         autoSync: true
+        # 本地情感候选采集（默认开启）；设为 false 关闭，重启 DSH 生效。
+        emotionCapture: true

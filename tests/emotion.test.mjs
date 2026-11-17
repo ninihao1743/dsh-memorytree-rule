@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { openMemoryDb } from "../lib/db.mjs";
 import { MemoryStore } from "../lib/store.mjs";
 import { currentVersion, SCHEMA_VERSION } from "../lib/schema.mjs";
+import { MemoryRuntime } from "../lib/runtime.mjs";
 import { localDate } from "../lib/diary.mjs";
 import {
   budgetFor,
@@ -92,14 +93,28 @@ test("分类：主会话用户 / 插件 cwd / 助手工作复盘", () => {
   assert.equal(classifyEvent(mainSession, assistantEvent("又崩了，报错修了一晚上，还是失败。")).category, "work");
 });
 
-test("默认关闭：没有显式 emotionCapture:true 时不采集", () => {
-  const { rt, cleanup } = makeRuntime({ emotionCapture: false });
+test("默认开启：未配置 emotionCapture 时也采集；显式 false 关闭", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mt-emo-default-"));
+  const rt = new MemoryRuntime({ dataDir: dir });
   try {
+    assert.equal(rt.config.emotionCapture, true);
     const res = captureEmotionEvent(rt, mainSession, userEvent("我今天很难过，想起以前的事。"));
+    assert.equal(res.ok, true, JSON.stringify(res));
+  } finally {
+    rt.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
+  const offDir = fs.mkdtempSync(path.join(os.tmpdir(), "mt-emo-off-"));
+  const offRt = new MemoryRuntime({ dataDir: offDir, emotionCapture: false });
+  try {
+    assert.equal(offRt.config.emotionCapture, false);
+    const res = captureEmotionEvent(offRt, mainSession, userEvent("我今天很难过，想起以前的事。"));
     assert.equal(res.ok, false);
     assert.equal(res.skipped, "disabled");
   } finally {
-    cleanup();
+    offRt.close();
+    fs.rmSync(offDir, { recursive: true, force: true });
   }
 });
 

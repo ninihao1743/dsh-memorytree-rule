@@ -47,11 +47,11 @@
 | `memory_ingest` | `sync` 把 `AGENTS.md` 的 §1 主干同步成索引；`migrate` 迁移旧库；`status` 看环境。 |
 | `memory_daily` | 每日分拣：出报告（待分拣叶、聚类、陈旧卡、过期项），或一次提交去枝/遗忘决定。 |
 | `memory_admin` | `doctor` / `stats` / `reindex` / `export` / `import` / `audit` / `report` / `diary` / `placement`。 |
-| `memory_emotion` | 可选的情感候选日结：`list` / `mark` / `stats` / `budget` / `report`；只动候选表，不直接写记忆。 |
+| `memory_emotion` | 情感候选日结：`list` / `mark` / `stats` / `budget` / `report`；只动候选表，不直接写记忆。 |
 
-## 可选：情感候选采集（默认关闭）
+## 情感候选采集（默认开启，可关闭）
 
-插件默认**不采集**会话正文。需要在插件配置里显式打开 `emotionCapture: true` 才会在本地按规则挑候选；打开的只是「候选」，不是记忆：候选留在 `emotion_candidate` 表里，30 天后自动清理，真正的记忆仍由 `memory_write` 写入。
+插件默认**开启**本地候选采集：在本地按规则挑出可能值得回顾的片段，先脱敏、截断、打分，存进 `emotion_candidate`。采集到的只是「候选」，不是记忆：30 天后自动清理，真正的记忆仍由 `memory_write` 写入；不想用就设 `emotionCapture: false`，重启 DSH 后停止。
 
 ```json
 {
@@ -103,7 +103,7 @@
 - 写入默认脱敏：常见密钥、`Bearer`、`password/secret/token/api_key = …`、邮箱、长数字串、`openid`/`qq` 值。
 - 全量导出：`memory_admin action=export`（JSONL）；审计：`memory_admin action=audit`。
 - 日记：`memory_admin action=diary`；只写「库内当天发生了什么」的索引，不写会话正文；手写日记不会被自动覆盖（`force=true` 才行）。
-- 默认不读会话正文；只有显式开启 `emotionCapture: true` 才在本地按规则挑候选，候选先脱敏、只留节选、30 天过期，不写记忆、不联网、不调外部 API。关闭后不再采集。
+- 默认在本地按规则挑情感候选：0 token、不联网、不调外部 API；候选先脱敏、只留节选、30 天过期，不写记忆。设 `emotionCapture: false` 可关闭，关闭后不再读会话正文。
 - 主干正本始终是 `AGENTS.md`；只有看板里显式确认的「写入正本」才会改它，改前备份、改后回读校验。
 
 ## 命令行
@@ -129,12 +129,12 @@ node bin/mt.mjs report --out report.html
 node --test tests/memory-tree.test.mjs tests/renumber.test.mjs tests/trunk-bucket.test.mjs tests/regressions.test.mjs tests/emotion.test.mjs
 ```
 
-103 个用例、5 个测试文件，覆盖分词、脱敏、空结果诚实、作用域隔离、默认作用域与全库检索、`init` 备份/拒绝覆盖、主干候选规则、取代、归档/硬删、任务卡唯一、`AGENTS.md` 解析与幂等同步、旧库迁移、每日分拣、过期降权、JSONL 往返、日记自动索引与手写保护、工具渲染内容块契约、看板自包含与关键组件、看板写正本/备份/信任升档、客户端侧栏入口契约、规则归枝，以及情感候选的提取/打分/分类/脱敏/去重/上限/默认关闭/预算/迁移。测试全部用临时目录隔离，不碰真实库。
+103 个用例、5 个测试文件，覆盖分词、脱敏、空结果诚实、作用域隔离、默认作用域与全库检索、`init` 备份/拒绝覆盖、主干候选规则、取代、归档/硬删、任务卡唯一、`AGENTS.md` 解析与幂等同步、旧库迁移、每日分拣、过期降权、JSONL 往返、日记自动索引与手写保护、工具渲染内容块契约、看板自包含与关键组件、看板写正本/备份/信任升档、客户端侧栏入口契约、规则归枝，以及情感候选的提取/打分/分类/脱敏/去重/上限/默认开启与显式关闭/预算/迁移。测试全部用临时目录隔离，不碰真实库。
 
 ## 明确没做的
 
 - **不做自动注入**：不会每轮把记忆塞进系统提示，避免与「单一注入源」冲突；召回靠模型主动调 `memory_search`。
-- **默认不做会话正文自动采集**：不开 `emotionCapture` 时，入库只走显式 `memory_write` 与每日分拣；开了也只落候选表，不直接改记忆。
+- **默认只落候选，不自动写记忆**：情感候选默认开启，但只进 `emotion_candidate`，不直接改记忆；设 `emotionCapture: false` 关闭后，入库只走显式 `memory_write` 与每日分拣。
 - **不是自动写记忆**：候选要经过日结判断，写不出第一人称感受的候选会被丢弃；插件不替用户决定什么是「值得记的」。
 - **不做加密**：库是明文 SQLite，靠脱敏与文件权限；需要加密请用磁盘加密或容器卷。
 - **不是神经语义检索**：字符 n-gram 只做措辞相近加分；没命中会如实说没有。

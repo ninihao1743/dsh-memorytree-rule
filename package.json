@@ -1,7 +1,7 @@
 {
   "name": "dsh-memorytree-rule",
-  "version": "1.0.2",
-  "description": "Memorytree：DSH 本地记忆树插件。四枝分层（主干/情感枝/任务枝/判断叶）、按作用域隔离、逐字证据与审计、离线 BM25 + 字符 n-gram 检索、星图看板与日记索引；可选本地情感候选采集（默认关闭、不调 LLM）；不联网、零外部服务。",
+  "version": "1.1.0",
+  "description": "Memorytree：DSH 本地记忆树插件。四枝分层（主干/情感枝/任务枝/判断叶）、按作用域隔离、逐字证据与审计、离线 BM25 + 字符 n-gram 检索、星图看板与日记索引；本地情感候选采集（默认开启、可配置关闭、不调 LLM）；不联网、零外部服务。",
   "type": "module",
   "main": "index.js",
   "exports": {

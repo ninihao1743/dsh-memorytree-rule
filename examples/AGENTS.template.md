@@ -174,7 +174,7 @@
 
 - **§3-2　记忆树插件卡**：  
   **subject**：`memorytree`。  
-  **用途**：DSH 本地记忆树插件 `dsh-memorytree-rule`，提供 9 个 `memory_*` 工具（含可选的情感候选 `memory_emotion`，默认关闭）、CLI 与星图看板；数据在 `<DSH_HOME>/memory-tree/memory.db`，主干正本是 `<DSH_HOME>/AGENTS.md`。  
+  **用途**：DSH 本地记忆树插件 `dsh-memorytree-rule`，提供 9 个 `memory_*` 工具（含情感候选 `memory_emotion`，默认开启、可配置关闭）、CLI 与星图看板；数据在 `<DSH_HOME>/memory-tree/memory.db`，主干正本是 `<DSH_HOME>/AGENTS.md`。  
   **常用命令**：`node bin/mt.mjs doctor`（自检）、`stats`（四枝统计）、`sync`（同步 AGENTS.md §1）、`search "关键词"`（检索）、`daily`（待分拣报告）、`report --out report.html`（看板）、`demo`（隔离示例库，不影响真实记忆）。  
   **坑**：① 手写 `trunk` 层只会落 `candidate`，不会冒充规则；主干 `active` 只能由 `AGENTS.md` 同步产生。② 改完插件代码要重装/重启 DSH，别只改源码就以为生效。③ 不要直接改 `memory.db`；用工具或 CLI。④ 物理删除前先导出或确认有备份。  
   **卡内路径**：`<插件安装目录>`（首次使用按实测填写）。  

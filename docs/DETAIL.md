@@ -34,7 +34,7 @@
 - `memory_ingest`：`sync` 同步 `AGENTS.md` §1；`migrate` 迁移旧库；`status` 看环境。
 - `memory_daily`：生成待分拣报告，或一次提交去枝/遗忘决定。
 - `memory_admin`：`doctor` / `stats` / `reindex` / `export` / `import` / `audit` / `report` / `diary` / `placement`。
-- `memory_emotion`：可选的情感候选日结（`list` / `mark` / `stats` / `budget` / `report`）；需显式开启 `emotionCapture`，只动候选表，不直接写记忆。
+- `memory_emotion`：情感候选日结（`list` / `mark` / `stats` / `budget` / `report`）；采集默认开启（可配 `emotionCapture: false` 关闭），只动候选表，不直接写记忆。
 
 ## 看板与命令行
 
@@ -57,13 +57,13 @@ node bin/mt.mjs report --out report.html
 
 - 库在 `<DSH_HOME>/memory-tree/memory.db`，WAL 单文件，可整体备份。
 - 写入默认脱敏：常见密钥、`Bearer`、`password/secret/token/api_key = …`、邮箱、长数字串、`openid`/`qq` 值。
-- 默认不读会话正文；只有显式开启 `emotionCapture: true` 才在本地按规则挑候选，候选先脱敏、只留节选、30 天过期，不写记忆、不联网、不调外部 API。插件 cwd 用 `emotionPluginCwdPatterns` 配置，不内置具体平台。
-- 情感采集默认关闭；开启方法、候选字段、日结流程见 [EMOTION.md](./EMOTION.md)。
+- 默认在本地按规则挑情感候选：0 token、不联网、不调 LLM；候选先脱敏、只留节选、30 天过期，不写记忆。插件 cwd 用 `emotionPluginCwdPatterns` 配置，不内置具体平台；设 `emotionCapture: false` 关闭。
+- 情感采集默认开启；关闭方法、候选字段、日结流程见 [EMOTION.md](./EMOTION.md)。
 - 主干正本始终是 `AGENTS.md`；只有看板里显式确认的「写入正本」才会改它，改前备份、改后回读校验。
 
 ## 边界
 
 - 不做自动注入：不会每轮把记忆塞进系统提示，召回靠主动调用 `memory_search`。
-- 默认不做会话正文自动采集：不开 `emotionCapture` 时，入库走显式 `memory_write` 与每日分拣；开了也只落候选表，不直接写记忆。
+- 情感候选默认采集，但只落候选表，不直接改记忆；设 `emotionCapture: false` 关闭后，入库走显式 `memory_write` 与每日分拣。
 - 向量检索是字符 n-gram 特征哈希，只用于措辞相近加分，不是神经语义模型；没命中不会编造。
 - 看板是快照，实时数据仍以 `memory.db` 为准。

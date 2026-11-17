@@ -1,20 +1,22 @@
-# 情感候选采集（可选，默认关闭）
+# 情感候选采集（默认开启，可关闭）
 
 这个功能不是「自动写记忆」，而是给情感枝加一个**本地候选池**：插件在会话事件里按规则挑出可能值得回顾的片段，先脱敏、截断、打分，存进 `emotion_candidate`；真正写不写、写成什么，仍由你在日结时用 `memory_write` 决定。
 
-默认关闭。没有显式配置 `emotionCapture: true` 时，插件不读会话正文，只保留原来的显式写入与每日分拣。
+默认开启。不想用就在配置里设 `emotionCapture: false`，重启 DSH 后不再采集。
 
-## 为什么默认关闭
+## 为什么默认开启
 
-- 会话正文可能含隐私；自动读正文应该是用户主动选择，不是安装即默认。
-- 「值得记」是判断，不是采集。候选只是线索，不是记忆。
-- 采集本身不花 token，但日结要花模型 token；默认关闭可以避免用户在不知情时多出这项成本。
+- 装上就能用：不用先翻文档、改配置才知道插件有这项能力。
+- 采集全程在本机：0 token、0 网络请求、不调 LLM；候选先脱敏、只留节选、30 天自动清理，不写记忆。
+- 默认开启不等于自动写记忆：候选只是线索，写不写、写成什么仍由日结时的 `memory_write` 决定；插件不会自动建日结任务，不建就没有模型成本。
+- 代价说清：会读本地会话的 text 块，并在 `emotion_candidate` 里留下节选；不能接受时设 `emotionCapture: false`，重启后不再采集。
 
 ## 配置
 
 在 DSH 的插件配置里给 `dsh-memorytree-rule` 加（具体层级以你的 DSH 配置格式为准）：
 
 ```yaml
+# 默认开启；设为 false 关闭
 emotionCapture: true
 emotionMinScore: 35
 emotionPluginCwdPatterns:
@@ -25,7 +27,7 @@ emotionRetentionDays: 30
 
 | 配置 | 默认 | 说明 |
 |---|---|---|
-| `emotionCapture` | `false` | 只有 `true` 才采集；其它值一律当关闭。 |
+| `emotionCapture` | `true` | 默认采集；设 `false` 关闭（其它非 `true` 值也按关闭处理）。 |
 | `emotionMinScore` | `35` | 候选入池的最低分；调高更严，调低更松。 |
 | `emotionPluginCwdPatterns` | `[]` | 插件会话的 cwd 子串列表；命中才把候选归为 `plugin`。不内置任何平台名。 |
 | `emotionReviewCostCapCny` | `0.3` | 日结预算上限（元）；`memory_emotion budget` 用。 |
@@ -47,7 +49,7 @@ emotionRetentionDays: 30
 - **上限**：每会话每天 6 条、全局 12 条、`plugin` 类别 4 条；同一会话内按分数取前几条。
 - **截断**：正文最多 800 字，另存 240 字上下文；不保存整段会话。
 - **去重**：`sha1(session_id + role + day + text)`，同一天同一条消息只入一次。
-- **脱敏**：候选正文先过本地脱敏（密钥、`Bearer`、邮箱、长数字、`openid`/`qq` 值、访客昵称与 @ 提及）。脱敏是尽力而为，不保证覆盖所有敏感格式；不要在不信任的环境里开启。
+- **脱敏**：候选正文先过本地脱敏（密钥、`Bearer`、邮箱、长数字、`openid`/`qq` 值、访客昵称与 @ 提及）。脱敏是尽力而为，不保证覆盖所有敏感格式；如果环境里可能有人查看本机库，自行评估要不要保留采集。
 
 ## 候选长什么样
 
@@ -74,7 +76,7 @@ emotionRetentionDays: 30
 
 - 采集：0 token、0 网络请求、不调 LLM；只在本地 SQLite 写候选。
 - 日结：模型读候选 + 写记忆的 token，按你自己的模型价格算；`budget` 会读本机 DSH 成本账本（如果存在），读不到就明确说「账本未读到」，不编造数字。
-- 硬上限：`emotionReviewCostCapCny` 只是 `budget` 的提示，不会自动阻止模型调用；要真正停，关闭 `emotionCapture` 或不要建日结任务。
+- 硬上限：`emotionReviewCostCapCny` 只是 `budget` 的提示，不会自动阻止模型调用；要真正停，把 `emotionCapture` 设为 `false`，或不要建日结任务。
 
 ## 关闭与清理
 
@@ -89,7 +91,7 @@ emotionRetentionDays: 30
 - 只处理 text 块；图片、语音、工具结果不采集。
 - 不自动写记忆、不自动归枝、不自动改 `AGENTS.md`。
 - 不做跨会话拼接；每条候选只带 240 字上下文。
-- 脱敏是尽力而为；开启前请确认你能接受「本地库里有节选」这件事。
+- 脱敏是尽力而为；默认开启只在本机库留节选，不能接受时设 `emotionCapture: false` 关闭。
 
 ## 排障
 
